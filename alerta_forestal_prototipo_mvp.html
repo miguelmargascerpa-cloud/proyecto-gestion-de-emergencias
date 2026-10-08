@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Prototipo - AlertaCom Forestal</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #e5e7eb; }
+        .app-container { max-width: 414px; height: 100vh; max-height: 896px; margin: 0 auto; background: white; position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+        @media (min-width: 420px) { .app-container { height: 90vh; margin-top: 5vh; border-radius: 2rem; border: 8px solid #1f2937; } }
+        
+        #map { flex-grow: 1; z-index: 10; }
+        .view-section { display: none; flex-grow: 1; overflow-y: auto; background: #f9fafb; z-index: 20; padding-bottom: 80px; }
+        .view-section.active { display: block; }
+        
+        .pulse-marker { background: rgba(239, 68, 68, 0.5); border-radius: 50%; animation: pulse 1.5s infinite; }
+        .pulse-marker-core { width: 10px; height: 10px; background: #dc2626; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        @keyframes pulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+        
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <header class="bg-slate-900 text-white p-4 flex justify-between items-center z-30 shadow-md">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-satellite-dish text-orange-500"></i>
+            <h1 class="font-bold text-lg tracking-wide">AlertaCom</h1>
+        </div>
+        <div class="flex items-center gap-2 text-xs bg-slate-800 px-2 py-1 rounded-full border border-slate-700">
+            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+            <span>Red Local</span>
+        </div>
+    </header>
+
+    <div id="map" class="active"></div>
+
+    <div id="view-alerts" class="view-section p-4">
+        <h2 class="text-xl font-bold mb-4 text-slate-800">Alertas Activas</h2>
+        
+        <div class="bg-white rounded-xl p-4 mb-3 shadow-sm border border-red-100 border-l-4 border-l-red-500">
+            <div class="flex justify-between items-start mb-2">
+                <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded uppercase">Foco Confirmado</span>
+                <span class="text-slate-400 text-xs">Hace 5 min</span>
+            </div>
+            <h3 class="font-bold text-slate-800">Humo denso sector Quebrada</h3>
+            <p class="text-slate-600 text-sm mt-1 mb-3">Reportado por: Vecino_45</p>
+            
+            <div class="flex gap-2 border-t pt-3">
+                <button class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-1 rounded text-sm font-medium flex items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-check text-green-600"></i> Confirmo (12)
+                </button>
+                <button class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-1 rounded text-sm font-medium flex items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-xmark text-red-500"></i> Falsa (0)
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-4 mb-3 shadow-sm border border-yellow-100 border-l-4 border-l-yellow-500">
+            <div class="flex justify-between items-start mb-2">
+                <span class="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-1 rounded uppercase">Por Validar</span>
+                <span class="text-slate-400 text-xs">Hace 12 min</span>
+            </div>
+            <h3 class="font-bold text-slate-800">Olor a humo fuerte</h3>
+            <p class="text-slate-600 text-sm mt-1 mb-3">Reportado por: María S.</p>
+            <div class="flex gap-2 border-t pt-3">
+                <button class="flex-1 bg-slate-100 text-slate-700 py-1 rounded text-sm font-medium flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-check text-green-600"></i> Confirmo (2)
+                </button>
+                <button class="flex-1 bg-slate-100 text-slate-700 py-1 rounded text-sm font-medium flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-xmark text-red-500"></i> Falsa (1)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-evac" class="view-section p-4">
+        <h2 class="text-xl font-bold mb-4 text-slate-800">Protocolo de Evacuación</h2>
+        
+        <div class="bg-orange-50 rounded-xl p-4 mb-4 border border-orange-200">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="fa-solid fa-person-running text-orange-600 text-2xl"></i>
+                <h3 class="font-bold text-orange-800">Preparación</h3>
+            </div>
+            <ul class="text-sm text-orange-800 space-y-2 ml-8 list-disc">
+                <li>Tenga su kit de emergencia a mano.</li>
+                <li>Corte suministros de gas y electricidad.</li>
+                <li>Humedezca el entorno de su vivienda si tiene tiempo.</li>
+            </ul>
+        </div>
+
+        <h3 class="font-bold text-slate-700 mb-2 mt-6">Zonas Seguras Asignadas</h3>
+        <div class="bg-white rounded-xl p-3 flex items-center gap-3 shadow-sm border border-slate-100 mb-2">
+            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                <i class="fa-solid fa-shield-heart"></i>
+            </div>
+            <div>
+                <h4 class="font-bold text-sm text-slate-800">Cancha Deportiva Norte</h4>
+                <p class="text-xs text-slate-500">A 400 metros - Capacidad: 200 personas</p>
+            </div>
+        </div>
+    </div>
+
+    <button id="btn-report" onclick="openModal()" class="absolute bottom-20 right-4 w-16 h-16 bg-red-600 rounded-full shadow-lg flex items-center justify-center text-white text-2xl z-40 hover:bg-red-700 active:scale-95 transition">
+        <i class="fa-solid fa-fire-flame-curved"></i>
+    </button>
+
+    <div id="report-modal" class="absolute inset-0 bg-slate-900/60 z-50 hidden flex-col justify-end">
+        <div class="bg-white rounded-t-3xl p-6 transform transition-transform translate-y-0">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-red-600">Reportar Foco</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <p class="text-slate-600 mb-4 text-sm">Su ubicación actual se enviará automáticamente con este reporte.</p>
+            
+            <label class="block text-sm font-medium text-slate-700 mb-1">¿Qué está viendo?</label>
+            <select id="report-type" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-4 py-3 mb-4 text-slate-700 outline-none focus:border-red-500">
+                <option value="humo">Humo denso</option>
+                <option value="fuego">Fuego visible</option>
+                <option value="cenizas">Caída de cenizas</option>
+            </select>
+
+            <button onclick="submitReport()" class="w-full bg-red-600 text-white font-bold text-lg py-4 rounded-xl shadow-md hover:bg-red-700 active:bg-red-800 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i> ENVIAR ALERTA
+            </button>
+        </div>
+    </div>
+
+
+    <nav class="bg-white border-t border-slate-200 flex justify-around pb-6 pt-3 px-2 z-40 absolute bottom-0 w-full">
+        <button onclick="switchView('map', this)" class="nav-btn text-orange-600 flex flex-col items-center gap-1 w-1/4">
+            <i class="fa-solid fa-map-location-dot text-xl"></i>
+            <span class="text-[10px] font-medium">Mapa</span>
+        </button>
+        <button onclick="switchView('view-alerts', this)" class="nav-btn text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1 w-1/4 relative">
+            <i class="fa-solid fa-bell text-xl"></i>
+            <span class="text-[10px] font-medium">Alertas</span>
+            <span class="absolute top-0 right-4 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <button onclick="switchView('view-evac', this)" class="nav-btn text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1 w-1/4">
+            <i class="fa-solid fa-person-running text-xl"></i>
+            <span class="text-[10px] font-medium">Evacuar</span>
+        </button>
+    </nav>
+
+</div>
+
+<script>
+
+    const map = L.map('map', { zoomControl: false }).setView([-32.935, -71.530], 14);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const safeIcon = L.divIcon({
+        html: '<div class="w-8 h-8 bg-green-500 border-2 border-white rounded-full flex items-center justify-center text-white shadow-md"><i class="fa-solid fa-shield-heart"></i></div>',
+        className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+    });
+
+    L.marker([-32.940, -71.535], {icon: safeIcon}).addTo(map).bindPopup("<b>Zona Segura</b><br>Cancha Norte");
+
+
+    const fireIcon = L.divIcon({
+        html: '<div class="pulse-marker" style="width:30px; height:30px;"><div class="pulse-marker-core"></div></div>',
+        className: '', iconSize: [30, 30], iconAnchor: [15, 15]
+    });
+
+
+    L.marker([-32.930, -71.520], {icon: fireIcon}).addTo(map).bindPopup("<b>Foco Activo</b><br>Confirmado por vecinos");
+
+
+    function switchView(viewId, btnElement) {
+
+        document.getElementById('map').style.display = 'none';
+        document.getElementById('view-alerts').classList.remove('active');
+        document.getElementById('view-evac').classList.remove('active');
+
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('text-orange-600');
+            btn.classList.add('text-slate-400');
+        });
+
+        btnElement.classList.remove('text-slate-400');
+        btnElement.classList.add('text-orange-600');
+
+        if(viewId === 'map') {
+            document.getElementById('map').style.display = 'block';
+            map.invalidateSize(); // Refrescar mapa de Leaflet
+            document.getElementById('btn-report').style.display = 'flex'; // Mostrar FAB en el mapa
+        } else {
+            document.getElementById(viewId).classList.add('active');
+            document.getElementById('btn-report').style.display = 'none'; // Ocultar FAB en otras vistas
+        }
+    }
+
+
+    const modal = document.getElementById('report-modal');
+
+    function openModal() {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function submitReport() {
+        const type = document.getElementById('report-type').value;
+        
+        const lat = -32.935 + (Math.random() - 0.5) * 0.01;
+        const lng = -71.530 + (Math.random() - 0.5) * 0.01;
+
+        L.marker([lat, lng], {icon: fireIcon}).addTo(map).bindPopup(`<b>Nuevo Reporte</b><br>${type}`);
+        
+        map.setView([lat, lng], 15);
+
+        closeModal();
+        alert("¡Alerta enviada a la red comunitaria con éxito!");
+    }
+</script>
+
+</body>
+</html>
